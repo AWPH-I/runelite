@@ -32,6 +32,9 @@ import java.awt.Rectangle;
 import java.util.Map;
 import java.util.UUID;
 import javax.inject.Inject;
+
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.client.plugins.party.data.PartyData;
 import net.runelite.client.ui.overlay.Overlay;
@@ -42,6 +45,7 @@ import net.runelite.client.ui.overlay.components.ProgressBarComponent;
 import net.runelite.client.ui.overlay.components.TitleComponent;
 import net.runelite.client.ws.PartyService;
 
+@Slf4j
 public class PartyStatsOverlay extends Overlay
 {
 	private static final Color HP_FG = new Color(0, 146, 54, 230);
@@ -52,15 +56,17 @@ public class PartyStatsOverlay extends Overlay
 	private final PartyPlugin plugin;
 	private final PartyService party;
 	private final PartyConfig config;
+	private final Client client;
 	private final PanelComponent body = new PanelComponent();
 
 	@Inject
-	private PartyStatsOverlay(final PartyPlugin plugin, final PartyService party, final PartyConfig config)
+	private PartyStatsOverlay(final PartyPlugin plugin, final PartyService party, final PartyConfig config, final Client client)
 	{
 		super(plugin);
 		this.plugin = plugin;
 		this.party = party;
 		this.config = config;
+		this.client = client;
 		body.setBorder(new Rectangle());
 		body.setGap(new Point(0, ComponentConstants.STANDARD_BORDER / 2));
 		getMenuEntries().add(new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY, "Leave", "Party"));
@@ -132,6 +138,13 @@ public class PartyStatsOverlay extends Overlay
 					prayBar.setValue(v.getPrayer());
 					prayBar.setLabelDisplayMode(ProgressBarComponent.LabelDisplayMode.FULL);
 					panel.getChildren().add(prayBar);
+				}
+
+				final net.runelite.api.Point p = client.getMouseCanvasPosition();
+
+				if (panel.getBounds().contains(p.getX(), p.getY()))
+				{
+					log.debug("Hovered over " + v.getName());
 				}
 
 				body.getChildren().add(panel);

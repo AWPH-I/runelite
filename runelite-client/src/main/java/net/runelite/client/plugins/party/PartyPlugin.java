@@ -39,17 +39,11 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
-import net.runelite.api.MenuAction;
-import net.runelite.api.MenuEntry;
-import net.runelite.api.Skill;
-import net.runelite.api.SoundEffectID;
-import net.runelite.api.Tile;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.FocusChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
@@ -63,11 +57,10 @@ import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.party.data.ItemInst;
 import net.runelite.client.plugins.party.data.PartyData;
 import net.runelite.client.plugins.party.data.PartyTilePingData;
-import net.runelite.client.plugins.party.messages.LocationUpdate;
-import net.runelite.client.plugins.party.messages.SkillUpdate;
-import net.runelite.client.plugins.party.messages.TilePing;
+import net.runelite.client.plugins.party.messages.*;
 import net.runelite.client.task.Schedule;
 import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
@@ -87,6 +80,8 @@ import net.runelite.http.api.ws.messages.party.UserSync;
 @Slf4j
 public class PartyPlugin extends Plugin implements KeyListener
 {
+	private static final int INVENTORY_SIZE = 28;
+
 	@Inject
 	private Client client;
 
@@ -144,6 +139,7 @@ public class PartyPlugin extends Plugin implements KeyListener
 		wsClient.registerMessage(SkillUpdate.class);
 		wsClient.registerMessage(TilePing.class);
 		wsClient.registerMessage(LocationUpdate.class);
+		wsClient.registerMessage(InventoryUpdate.class);
 		keyManager.registerKeyListener(this);
 		doSync = true; // Delay sync so eventbus can process correctly.
 	}
@@ -159,6 +155,7 @@ public class PartyPlugin extends Plugin implements KeyListener
 		wsClient.unregisterMessage(SkillUpdate.class);
 		wsClient.unregisterMessage(TilePing.class);
 		wsClient.unregisterMessage(LocationUpdate.class);
+		wsClient.unregisterMessage(InventoryUpdate.class);
 		keyManager.unregisterKeyListener(this);
 		hotkeyDown = false;
 		doSync = false;
@@ -327,6 +324,80 @@ public class PartyPlugin extends Plugin implements KeyListener
 
 		lastHp = currentHealth;
 		lastPray = currentPrayer;
+	}
+
+	@Subscribe
+	public void onItemContainerChanged(final ItemContainerChanged event)
+	{
+		if (!event.getItemContainer().equals(client.getItemContainer(InventoryID.INVENTORY)))
+		{
+			return;
+		}
+
+		if (sendAlert && client.getGameState() == GameState.LOGGED_IN)
+		{
+			sendAlert = false;
+			sendInstructionMessage();
+		}
+
+		if (doSync && !party.getMembers().isEmpty())
+		{
+			// Request sync
+			final UserSync userSync = new UserSync();
+			userSync.setMemberId(party.getLocalMember().getMemberId());
+			ws.send(userSync);
+		}
+
+		doSync = false;
+
+		final PartyMember localMember = party.getLocalMember();
+
+		if (localMember != null)
+		{
+			final Item[] items = event.getItemContainer().getItems();
+			final ItemInst[] list = new ItemInst[INVENTORY_SIZE];
+
+			for (int i = 0; i < INVENTORY_SIZE; i++)
+			{
+				if (i < items.length && items[i].getQuantity() > 0)
+				{
+					list[i] = new ItemInst(items[i].getId(), items[i].getQuantity());
+					continue;
+				}
+
+				list[i] = new ItemInst(-1, 0);
+			}
+
+			final InventoryUpdate update = new InventoryUpdate(list);
+			update.setMemberId(localMember.getMemberId());
+			ws.send(update);
+		}
+	}
+
+	@Subscribe
+	public void onInventoryUpdate(final InventoryUpdate event)
+	{
+		final PartyData partyData = getPartyData(event.getMemberId());
+
+		if (partyData == null)
+		{
+			return;
+		}
+
+		log.debug("inventory ---");
+		for (ItemInst i : event.getItems())
+		{
+			if (i != null)
+			{
+				log.debug(String.valueOf(i.getId()));
+			}
+			else
+			{
+				log.debug("blank");
+			}
+		}
+
+		partyData.setInventory(event.getItems());
 	}
 
 	@Subscribe

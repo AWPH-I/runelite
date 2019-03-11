@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Tomas Slusny <slusnucky@gmail.com>
+ * Copyright (c) 2019, awphi
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,31 +22,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package net.runelite.client.plugins.party.data;
 
-import java.awt.Color;
-import java.util.List;
-import java.util.UUID;
+package net.runelite.client.plugins.party.messages;
+
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import net.runelite.client.ui.overlay.components.PanelComponent;
-import net.runelite.client.ui.overlay.worldmap.WorldMapPoint;
+import net.runelite.client.plugins.party.data.ItemInst;
+import net.runelite.http.api.ws.messages.party.PartyMemberMessage;
 
-@Setter
+@AllArgsConstructor
 @Getter
-@RequiredArgsConstructor
-public class PartyData
+public class InventoryUpdate extends PartyMemberMessage
 {
-	private final UUID memberId;
-	private final String name;
-	private final WorldMapPoint worldMapPoint;
-	private final PanelComponent panel = new PanelComponent();
-	private final Color color;
-
-	private int hitpoints;
-	private int maxHitpoints;
-	private int prayer;
-	private int maxPrayer;
-	private ItemInst[] inventory;
+	private final ItemInst[] items;
 }
