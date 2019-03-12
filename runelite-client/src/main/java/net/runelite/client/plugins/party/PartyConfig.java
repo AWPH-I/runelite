@@ -80,4 +80,14 @@ public interface PartyConfig extends Config
 	{
 		return true;
 	}
+
+	@ConfigItem(
+			keyName = "shareInventory",
+			name = "Share Inventory",
+			description = "Share inventory contents with party members"
+	)
+	default boolean shareInventory()
+	{
+		return false;
+	}
 }

@@ -27,12 +27,12 @@ package net.runelite.client.plugins.party.messages;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import net.runelite.client.plugins.party.data.ItemInst;
+import net.runelite.client.plugins.party.data.ItemData;
 import net.runelite.http.api.ws.messages.party.PartyMemberMessage;
 
 @AllArgsConstructor
 @Getter
 public class InventoryUpdate extends PartyMemberMessage
 {
-	private final ItemInst[] items;
+	private final ItemData[] items;
 }

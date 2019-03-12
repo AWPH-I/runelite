@@ -46,4 +46,10 @@ public class PartyPluginServiceImpl implements PartyPluginService
 	{
 		return plugin.getPartyData(memberId);
 	}
+
+	@Override
+	public PartyData getHoveredPartyMember()
+	{
+		return plugin.getHoveredPartyMember();
+	}
 }

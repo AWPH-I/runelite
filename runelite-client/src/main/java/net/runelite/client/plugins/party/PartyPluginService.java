@@ -37,4 +37,10 @@ public interface PartyPluginService
 	 */
 	@Nullable
 	PartyData getPartyData(UUID memberId);
+
+	/**
+	 * Get the PartyData of the member that the mouse is currently hovered over.
+	 */
+	@Nullable
+	PartyData getHoveredPartyMember();
 }

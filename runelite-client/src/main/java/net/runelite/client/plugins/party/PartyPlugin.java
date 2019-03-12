@@ -38,6 +38,7 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
@@ -57,7 +58,7 @@ import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
-import net.runelite.client.plugins.party.data.ItemInst;
+import net.runelite.client.plugins.party.data.ItemData;
 import net.runelite.client.plugins.party.data.PartyData;
 import net.runelite.client.plugins.party.data.PartyTilePingData;
 import net.runelite.client.plugins.party.messages.*;
@@ -120,6 +121,10 @@ public class PartyPlugin extends Plugin implements KeyListener
 
 	@Getter
 	private final List<PartyTilePingData> pendingTilePings = Collections.synchronizedList(new ArrayList<>());
+
+	@Getter
+	@Setter
+	private PartyData hoveredPartyMember;
 
 	private int lastHp, lastPray;
 	private boolean hotkeyDown, doSync;
@@ -327,19 +332,8 @@ public class PartyPlugin extends Plugin implements KeyListener
 	}
 
 	@Subscribe
-	public void onItemContainerChanged(final ItemContainerChanged event)
+	private void onItemContainerChanged(final ItemContainerChanged event)
 	{
-		if (!event.getItemContainer().equals(client.getItemContainer(InventoryID.INVENTORY)))
-		{
-			return;
-		}
-
-		if (sendAlert && client.getGameState() == GameState.LOGGED_IN)
-		{
-			sendAlert = false;
-			sendInstructionMessage();
-		}
-
 		if (doSync && !party.getMembers().isEmpty())
 		{
 			// Request sync
@@ -352,26 +346,44 @@ public class PartyPlugin extends Plugin implements KeyListener
 
 		final PartyMember localMember = party.getLocalMember();
 
-		if (localMember != null)
+		if (localMember == null)
 		{
-			final Item[] items = event.getItemContainer().getItems();
-			final ItemInst[] list = new ItemInst[INVENTORY_SIZE];
+			return;
+		}
 
-			for (int i = 0; i < INVENTORY_SIZE; i++)
-			{
-				if (i < items.length && items[i].getQuantity() > 0)
-				{
-					list[i] = new ItemInst(items[i].getId(), items[i].getQuantity());
-					continue;
-				}
-
-				list[i] = new ItemInst(-1, 0);
-			}
-
-			final InventoryUpdate update = new InventoryUpdate(list);
+		if (!config.shareInventory())
+		{
+			final InventoryUpdate update = new InventoryUpdate(null);
 			update.setMemberId(localMember.getMemberId());
 			ws.send(update);
+			return;
 		}
+
+		final ItemContainer container = client.getItemContainer(InventoryID.INVENTORY);
+
+		Item[] items = new Item[INVENTORY_SIZE];
+
+		if (container != null)
+		{
+			items = container.getItems();
+		}
+
+		final ItemData[] list = new ItemData[INVENTORY_SIZE];
+
+		for (int i = 0; i < INVENTORY_SIZE; i++)
+		{
+			if (i < items.length && items[i].getQuantity() > 0)
+			{
+				list[i] = new ItemData(items[i].getId(), items[i].getQuantity());
+				continue;
+			}
+
+			list[i] = new ItemData(-1, 0);
+		}
+
+		final InventoryUpdate update = new InventoryUpdate(list);
+		update.setMemberId(localMember.getMemberId());
+		ws.send(update);
 	}
 
 	@Subscribe
@@ -382,19 +394,6 @@ public class PartyPlugin extends Plugin implements KeyListener
 		if (partyData == null)
 		{
 			return;
-		}
-
-		log.debug("inventory ---");
-		for (ItemInst i : event.getItems())
-		{
-			if (i != null)
-			{
-				log.debug(String.valueOf(i.getId()));
-			}
-			else
-			{
-				log.debug("blank");
-			}
 		}
 
 		partyData.setInventory(event.getItems());

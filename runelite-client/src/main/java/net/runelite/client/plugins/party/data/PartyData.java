@@ -25,7 +25,6 @@
 package net.runelite.client.plugins.party.data;
 
 import java.awt.Color;
-import java.util.List;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -48,5 +47,5 @@ public class PartyData
 	private int maxHitpoints;
 	private int prayer;
 	private int maxPrayer;
-	private ItemInst[] inventory;
+	private ItemData[] inventory;
 }

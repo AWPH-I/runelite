@@ -31,21 +31,23 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.inject.Inject;
 
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.PluginDependency;
+import net.runelite.client.plugins.inventoryviewer.InventoryViewerPlugin;
 import net.runelite.client.plugins.party.data.PartyData;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayMenuEntry;
-import net.runelite.client.ui.overlay.components.ComponentConstants;
-import net.runelite.client.ui.overlay.components.PanelComponent;
-import net.runelite.client.ui.overlay.components.ProgressBarComponent;
-import net.runelite.client.ui.overlay.components.TitleComponent;
+import net.runelite.client.ui.overlay.components.*;
 import net.runelite.client.ws.PartyService;
 
 @Slf4j
+@PluginDependency(InventoryViewerPlugin.class)
 public class PartyStatsOverlay extends Overlay
 {
 	private static final Color HP_FG = new Color(0, 146, 54, 230);
@@ -60,13 +62,14 @@ public class PartyStatsOverlay extends Overlay
 	private final PanelComponent body = new PanelComponent();
 
 	@Inject
-	private PartyStatsOverlay(final PartyPlugin plugin, final PartyService party, final PartyConfig config, final Client client)
+	private PartyStatsOverlay(final PartyPlugin plugin, final PartyService party, final PartyConfig config, final Client client, final ItemManager itemManager)
 	{
 		super(plugin);
 		this.plugin = plugin;
 		this.party = party;
 		this.config = config;
 		this.client = client;
+
 		body.setBorder(new Rectangle());
 		body.setGap(new Point(0, ComponentConstants.STANDARD_BORDER / 2));
 		getMenuEntries().add(new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY, "Leave", "Party"));
@@ -90,6 +93,11 @@ public class PartyStatsOverlay extends Overlay
 		body.setBackgroundColor(null);
 
 		boolean only1 = plugin.getPartyDataMap().size() == 1;
+		final net.runelite.api.Point mousePosition = new net.runelite.api.Point(
+				client.getMouseCanvasPosition().getX() + client.getViewportXOffset(),
+				client.getMouseCanvasPosition().getY() + client.getViewportYOffset());
+
+		final AtomicReference<PartyData> hovered = new AtomicReference<>();
 
 		synchronized (plugin.getPartyDataMap())
 		{
@@ -140,17 +148,16 @@ public class PartyStatsOverlay extends Overlay
 					panel.getChildren().add(prayBar);
 				}
 
-				final net.runelite.api.Point p = client.getMouseCanvasPosition();
-
-				if (panel.getBounds().contains(p.getX(), p.getY()))
+				if (panel.getBounds().contains(mousePosition.getX(), mousePosition.getY()))
 				{
-					log.debug("Hovered over " + v.getName());
+					hovered.set(v);
 				}
 
 				body.getChildren().add(panel);
 			});
 		}
 
+		plugin.setHoveredPartyMember(hovered.get());
 		return body.render(graphics);
 	}
 }

@@ -24,9 +24,7 @@
  */
 package net.runelite.client.plugins.inventoryviewer;
 
-import java.awt.Dimension;
-import java.awt.Graphics2D;
-import java.awt.Point;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import net.runelite.api.Client;
@@ -35,10 +33,14 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.party.PartyPluginService;
+import net.runelite.client.plugins.party.data.ItemData;
+import net.runelite.client.plugins.party.data.PartyData;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.ImageComponent;
 import net.runelite.client.ui.overlay.components.PanelComponent;
+import net.runelite.client.ui.overlay.components.TitleComponent;
 
 class InventoryViewerOverlay extends Overlay
 {
@@ -49,58 +51,105 @@ class InventoryViewerOverlay extends Overlay
 
 	private final Client client;
 	private final ItemManager itemManager;
+	private final PartyPluginService partyService;
 
-	private final PanelComponent panelComponent = new PanelComponent();
+	private final PanelComponent inventoryPanel = new PanelComponent();
+	private final PanelComponent inventoryWrapper = new PanelComponent();
 
 	@Inject
-	private InventoryViewerOverlay(Client client, ItemManager itemManager)
+	private InventoryViewerOverlay(final Client client, final InventoryViewerPlugin plugin, final ItemManager itemManager, final PartyPluginService partyService)
 	{
+		super(plugin);
+
 		setPosition(OverlayPosition.BOTTOM_RIGHT);
-		panelComponent.setWrapping(4);
-		panelComponent.setGap(new Point(6, 4));
-		panelComponent.setOrientation(PanelComponent.Orientation.HORIZONTAL);
-		this.itemManager = itemManager;
+		inventoryPanel.setWrapping(4);
+
+		inventoryPanel.setGap(new Point(6, 4));
+		inventoryPanel.setOrientation(PanelComponent.Orientation.HORIZONTAL);
+		inventoryPanel.setBackgroundColor(null);
+
+		inventoryWrapper.setWrapping(2);
+		inventoryWrapper.setGap(new Point(0, 4));
+		inventoryWrapper.setOrientation(PanelComponent.Orientation.VERTICAL);
+
 		this.client = client;
+		this.itemManager = itemManager;
+		this.partyService = partyService;
 	}
 
 	@Override
 	public Dimension render(Graphics2D graphics)
 	{
-		final ItemContainer itemContainer = client.getItemContainer(InventoryID.INVENTORY);
+		final PartyData member = partyService.getHoveredPartyMember();
 
-		if (itemContainer == null)
+		final ItemData[] items;
+		String name;
+
+		if (member == null)
 		{
-			return null;
+			final ItemContainer itemContainer = client.getItemContainer(InventoryID.INVENTORY);
+
+			if (itemContainer == null)
+			{
+				return null;
+			}
+
+			final Item[] x = itemContainer.getItems();
+			items = new ItemData[INVENTORY_SIZE];
+
+			for (int i = 0; i < INVENTORY_SIZE; i ++)
+			{
+				if (i < x.length)
+				{
+					items[i] = new ItemData(x[i].getId(), x[i].getQuantity());
+					continue;
+				}
+
+				items[i] = new ItemData(-1, 0);
+			}
+
+			name = "Your";
+		}
+		else
+		{
+			items = member.getInventory();
+
+			name = member.getName().split("#")[0];
+			name += name.endsWith("s") ? "'" : "'s";
 		}
 
-		panelComponent.getChildren().clear();
+		inventoryWrapper.getChildren().clear();
+		inventoryPanel.getChildren().clear();
 
-		final Item[] items = itemContainer.getItems();
+		inventoryWrapper.getChildren().add(
+				TitleComponent.builder()
+						.text(name + " Inventory")
+						.build()
+		);
 
 		for (int i = 0; i < INVENTORY_SIZE; i++)
 		{
-			if (i < items.length)
+			final ItemData item = items[i];
+			if (item.getQuantity() > 0)
 			{
-				final Item item = items[i];
-				if (item.getQuantity() > 0)
+				final BufferedImage image = getImage(item);
+				if (image != null)
 				{
-					final BufferedImage image = getImage(item);
-					if (image != null)
-					{
-						panelComponent.getChildren().add(new ImageComponent(image));
-						continue;
-					}
+					inventoryPanel.getChildren().add(new ImageComponent(image));
+					continue;
 				}
 			}
 
 			// put a placeholder image so each item is aligned properly and the panel is not resized
-			panelComponent.getChildren().add(PLACEHOLDER_IMAGE);
+			inventoryPanel.getChildren().add(PLACEHOLDER_IMAGE);
 		}
 
-		return panelComponent.render(graphics);
+		inventoryWrapper.getChildren().add(inventoryPanel);
+
+		return inventoryWrapper.render(graphics);
 	}
 
-	private BufferedImage getImage(Item item)
+	private BufferedImage getImage(ItemData item)
 	{
 		ItemComposition itemComposition = itemManager.getItemComposition(item.getId());
 		return itemManager.getImage(item.getId(), item.getQuantity(), itemComposition.isStackable());
