@@ -195,7 +195,7 @@ public class HydraPlugin extends Plugin
 	public void sendMsg(String msg)
 	{
 		String chatMessage = (new ChatMessageBuilder()).append(ChatColorType.NORMAL).append(msg).build();
-		this.chatMessageManager.queue(QueuedMessage.builder().type(ChatMessageType.SERVER).runeLiteFormattedMessage(chatMessage).build());
+		this.chatMessageManager.queue(QueuedMessage.builder().type(ChatMessageType.CONSOLE).runeLiteFormattedMessage(chatMessage).build());
 	}
 
 	@Subscribe
@@ -305,7 +305,7 @@ public class HydraPlugin extends Plugin
 					if (this.config.chat())
 					{
 						String chatMessage = (new ChatMessageBuilder()).append(ChatColorType.NORMAL).append(this.test).build();
-						this.chatMessageManager.queue(QueuedMessage.builder().type(ChatMessageType.SERVER).runeLiteFormattedMessage(chatMessage).build());
+						this.chatMessageManager.queue(QueuedMessage.builder().type(ChatMessageType.CONSOLE).runeLiteFormattedMessage(chatMessage).build());
 					}
 
 					this.lastProjectile = p;
