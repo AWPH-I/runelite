@@ -1,0 +1,125 @@
+/*
+ * Copyright (c) 2019, awphi
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this
+ *    list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+package net.runelite.client.plugins.hydra;
+
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.Polygon;
+import java.util.Iterator;
+import java.util.List;
+import javax.inject.Inject;
+import net.runelite.api.Client;
+import net.runelite.api.GraphicsObject;
+import net.runelite.api.Perspective;
+import net.runelite.api.coords.LocalPoint;
+import net.runelite.client.game.SkillIconManager;
+import net.runelite.client.ui.overlay.Overlay;
+import net.runelite.client.ui.overlay.OverlayPosition;
+import net.runelite.client.ui.overlay.OverlayUtil;
+import net.runelite.client.ui.overlay.components.ImageComponent;
+import net.runelite.client.ui.overlay.components.PanelComponent;
+import net.runelite.client.ui.overlay.components.PanelComponent.Orientation;
+
+public class HydraOverlay extends Overlay
+{
+	private static final Color COLOR_ICON_BACKGROUND = new Color(0, 0, 0, 128);
+	private static final Color COLOR_ICON_BORDER = new Color(0, 0, 0, 255);
+	private static final Color COLOR_ICON_BORDER_FILL = new Color(219, 175, 0, 255);
+	private static final int OVERLAY_ICON_DISTANCE = 50;
+	private static final int OVERLAY_ICON_MARGIN = 8;
+	private Client client;
+	private final HydraPlugin plugin;
+
+	@Inject
+	private SkillIconManager iconManager;
+	private final PanelComponent panelComponent = new PanelComponent();
+
+	@Inject
+	public HydraOverlay(Client client, HydraPlugin plugin)
+	{
+		this.setPosition(OverlayPosition.BOTTOM_RIGHT);
+		this.panelComponent.setOrientation(Orientation.HORIZONTAL);
+		this.client = client;
+		this.plugin = plugin;
+	}
+
+	public Dimension render(Graphics2D graphics)
+	{
+		this.panelComponent.getChildren().clear();
+
+		if (!this.plugin.hydraFound)
+		{
+			return null;
+		}
+		else if (!this.client.isInInstancedRegion())
+		{
+			return null;
+		}
+		else
+		{
+			Color prayColor = Color.GRAY;
+			String pray = "";
+			int prayC = 0;
+			if (this.plugin.prayMage)
+			{
+				pray = "Mage";
+				prayC = this.plugin.mage;
+				prayColor = Color.BLUE;
+				this.panelComponent.getChildren().add(new ImageComponent(this.plugin.mageImage));
+			}
+			else if (this.plugin.prayRange)
+			{
+				pray = "Range";
+				prayC = this.plugin.range;
+				prayColor = Color.GREEN;
+				this.panelComponent.getChildren().add(new ImageComponent(this.plugin.rangeImage));
+			}
+
+			return this.panelComponent.render(graphics);
+		}
+	}
+
+	private void renderGraphicsObjects(Graphics2D graphics)
+	{
+		List<GraphicsObject> graphicsObjects = this.client.getGraphicsObjects();
+		Iterator var3 = graphicsObjects.iterator();
+
+		while (var3.hasNext())
+		{
+			GraphicsObject graphicsObject = (GraphicsObject)var3.next();
+			LocalPoint lp = graphicsObject.getLocation();
+			Polygon poly = Perspective.getCanvasTilePoly(this.client, lp);
+			Polygon polyBox = Perspective.getCanvasTileAreaPoly(this.client, lp, 3);
+			if (poly != null)
+			{
+				OverlayUtil.renderPolygon(graphics, polyBox, Color.MAGENTA);
+			}
+		}
+
+	}
+}
+
