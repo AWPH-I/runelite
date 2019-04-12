@@ -127,7 +127,7 @@ public class HydraPlugin extends Plugin
 		{
 			for (int i = 0; i < npcs.size(); ++i)
 			{
-				if (((NPC)npcs.get(i)).getName() != null && ((NPC)npcs.get(i)).getName().equals("Alchemical Hydra"))
+				if (npcs.get(i).getName() != null && npcs.get(i).getName().equals("Alchemical Hydra"))
 				{
 					this.hydra = (NPC)npcs.get(i);
 					this.hydraFound = true;
